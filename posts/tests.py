@@ -7,7 +7,7 @@ from django.urls import reverse
 from posts.models import Group, Post, User
 
 
-class PostsPageTest(TestCase):
+class PostAppTest(TestCase):
     def setUp(self):
         # создание авторизованного пользователя
         self.authorized_client = Client()
@@ -51,6 +51,17 @@ class PostsPageTest(TestCase):
             "является изображением."
         )
 
+        # создание автора и поста для подписки
+        self.author_1 = User.objects.create_user(
+            username="author_1", password=12345
+        )
+        self.post_1_author_1 = Post.objects.create(
+            text=self.text_1, group=self.group, author=self.author_1,
+        )
+
+        # тестовый комментарий
+        self.comment_text = "some comments..."
+
     def test_user_profile_page(self):
         """
         Проверка наличия персональной страницы пользователя после его
@@ -58,7 +69,7 @@ class PostsPageTest(TestCase):
         """
 
         response = self.authorized_client.get(
-            reverse("profile", args=(self.user.username,))
+            reverse("profile", kwargs={"username": self.user.username})
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual("profile.html", response.templates[0].name)
@@ -99,13 +110,14 @@ class PostsPageTest(TestCase):
         target_url = f"{login_url}?next={new_post_url}"
 
         self.assertRedirects(response, target_url)
-        post = Post.objects.all().first()
-        self.assertEqual(Post.objects.count(), post.id)
 
     def post_contains_params_on_all_pages(
         self, post_id, text=None, image=None
     ):
-        # создание коллекции c url страниц на которых могут отображаться посты
+        """
+        Вспомогательная функция для проверки отображения постов и их
+        содержимого на всех страницах.
+        """
 
         urls = [
             reverse("index"),
@@ -238,3 +250,84 @@ class PostsPageTest(TestCase):
 
         response = self.authorized_client.get(reverse("index"))
         self.assertContains(response, "not_cached")
+
+    def test_auth_user_follow_unfollow(self):
+        """
+        Авторизованный пользователь может подписываться на других пользователей
+        и удалять их из подписок.
+        """
+
+        response = self.authorized_client.get(
+            reverse("profile", kwargs={"username": self.author_1.username})
+        )
+        self.assertContains(response, "Подписчиков: 0")
+
+        self.authorized_client.get(
+            reverse(
+                "profile_follow", kwargs={"username": self.author_1.username}
+            )
+        )
+        response = self.authorized_client.get(
+            reverse("profile", kwargs={"username": self.author_1.username})
+        )
+        self.assertContains(response, "Подписчиков: 1")
+
+        self.authorized_client.get(
+            reverse(
+                "profile_unfollow", kwargs={"username": self.author_1.username}
+            )
+        )
+        response = self.authorized_client.get(
+            reverse("profile", kwargs={"username": self.author_1.username})
+        )
+        self.assertContains(response, "Подписчиков: 0")
+
+    def test_follower_index(self):
+        """
+        Новая запись пользователя появляется в ленте тех, кто на него подписан
+        и не появляется в ленте тех, кто не подписан на него.
+        """
+
+        response = self.authorized_client.get(reverse("follow_index"))
+        self.assertNotContains(response, self.text_1)
+
+        cache.clear()
+
+        self.authorized_client.get(
+            reverse(
+                "profile_follow", kwargs={"username": self.author_1.username}
+            )
+        )
+        response = self.authorized_client.get(reverse("follow_index"))
+        self.assertContains(response, self.text_1)
+
+    def test_only_auth_user_add_comment(self):
+        """
+        Только авторизированный пользователь может комментировать посты.
+        """
+
+        response = self.authorized_client.post(
+            reverse(
+                "add_comment",
+                kwargs={
+                    "username": self.user.username,
+                    "post_id": self.post_without_image.pk,
+                },
+            ),
+            {"text": self.comment_text},
+            follow=True,
+        )
+        self.assertContains(response, self.comment_text)
+
+        response = self.unauthorized_client.post(
+            reverse(
+                "add_comment",
+                kwargs={
+                    "username": self.user.username,
+                    "post_id": self.post_without_image.pk,
+                },
+            ),
+            {"text": self.comment_text},
+            follow=True,
+        )
+        self.assertNotContains(response, self.comment_text)

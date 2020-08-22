@@ -33,9 +33,6 @@ class Post(models.Model):
     def __str__(self):
         return self.text
 
-    def comments_count(self):
-        return Comment.objects.filter(post=self).count()
-
     class Meta:
         ordering = ("-pub_date",)
 

@@ -48,13 +48,17 @@ def profile(request, username):
     post_limit = 10
     author = get_object_or_404(User, username=username)
     post_list = Post.objects.filter(author=author)
-    post_count = Post.objects.filter(author=author).count()
+    post_count = author.author_posts.count()
+    follower_count = author.following.count()
+    following_count = author.follower.count()
     paginator = Paginator(post_list, post_limit)
     page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
     render_dict = {
         "author": author,
         "post_count": post_count,
+        "follower_count": following_count,
+        "following_count": follower_count,
         "page": page,
         "paginator": paginator,
     }
@@ -70,7 +74,9 @@ def profile(request, username):
 def post_view(request, username, post_id):
     author = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, author=author, pk=post_id)
-    post_count = Post.objects.filter(author=author).count()
+    post_count = author.author_posts.count()
+    follower_count = author.following.count()
+    following_count = author.follower.count()
     comments = post.comments.all()
     form = CommentForm()
     return render(
@@ -80,6 +86,8 @@ def post_view(request, username, post_id):
             "post": post,
             "author": author,
             "post_count": post_count,
+            "follower_count": following_count,
+            "following_count": follower_count,
             "form": form,
             "comments": comments,
         },
@@ -118,6 +126,9 @@ def server_error(request):
 def add_comment(request, username, post_id):
     author = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, pk=post_id)
+    post_count = author.author_posts.count()
+    follower_count = author.following.count()
+    following_count = author.follower.count()
     comments = post.comments.all()
     form = CommentForm(request.POST or None)
     if request.method == "POST":
@@ -131,7 +142,14 @@ def add_comment(request, username, post_id):
     return render(
         request,
         "post.html",
-        {"post": post, "author": author, "form": form, "comments": comments},
+        {"post": post,
+         "author": author,
+         "form": form,
+         "post_count": post_count,
+         "follower_count": following_count,
+         "following_count": follower_count,
+         "comments": comments,
+         },
     )
 
 

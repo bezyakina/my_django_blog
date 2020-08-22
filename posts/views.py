@@ -142,14 +142,15 @@ def add_comment(request, username, post_id):
     return render(
         request,
         "post.html",
-        {"post": post,
-         "author": author,
-         "form": form,
-         "post_count": post_count,
-         "follower_count": following_count,
-         "following_count": follower_count,
-         "comments": comments,
-         },
+        {
+            "post": post,
+            "author": author,
+            "form": form,
+            "post_count": post_count,
+            "follower_count": following_count,
+            "following_count": follower_count,
+            "comments": comments,
+        },
     )
 
 

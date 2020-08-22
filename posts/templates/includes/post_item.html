@@ -5,30 +5,23 @@
     <img class="card-img" src="{{ im.url }}">
 {% endthumbnail %}
 
-      <div class="card-body">
-         <p class="card-text">
-            <a href="/{{ author }}/"><strong class="d-block text-gray-dark">@{{ author }}</strong></a>
-            {% if view == 'profile' %}
-                <p>{{ post.text }}</p>
-            {% else %}
-                <p>{{ post }}</p>
-            {% endif %}
-         </p>
-
-         <div class="d-flex justify-content-between align-items-center">
+    <div class="card-body">
+        <p class="card-text">
+            <a name="post_{{ post.id }}" href="{% url 'profile' post.author.username %}">
+                <strong class="d-block text-gray-dark">@{{ post.author }}</strong>
+            </a>
+            {{ post.text|linebreaksbr }}
+        </p>
+        <div class="d-flex justify-content-between align-items-center">
             <div class="btn-group ">
-                {% if view == 'profile' %}
-                    <a class="btn btn-sm text-muted" href="/{{ post.author }}/{{post.id}}/" role="button">Добавить комментарий</a>
-                    {% if request.user == post.author %}
-                    <a class="btn btn-sm text-muted" href="/{{ post.author }}/{{post.id}}/edit" role="button">Редактировать</a>
-                    {% endif %}
-                {% else %}
-                    {% if user == author %}
-                     <a class="btn btn-sm text-muted" href="/{{ post.author }}/{{post.id}}/edit" role="button">Редактировать</a>
-                     {% endif %}
+                <a class="btn btn-sm text-muted" href="{% url 'add_comment' post.author.username post.id %}"
+                   role="button"> Добавить комментарий </a>
+                {% if user == post.author %}
+                    <a class="btn btn-sm text-muted" href="{% url 'post_edit' post.author.username post.id %}"
+                       role="button"> Редактировать </a>
                 {% endif %}
             </div>
             <small class="text-muted">{{post.pub_date|date:'d M Y'}}</small>
-         </div>
+        </div>
     </div>
 </div>

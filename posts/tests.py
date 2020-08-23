@@ -1,6 +1,7 @@
 from time import sleep
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -31,19 +32,6 @@ class PostAppTest(TestCase):
 
         # тестовые данные для тестирования постов на наличие изображений
         self.tag = "<img "
-        self.image_path = "media/posts/test_image.jpg"
-        self.non_image_path = "posts/tests.py"
-
-        self.post_without_image = Post.objects.create(
-            text=self.text_1, group=self.group, author=self.user,
-        )
-
-        self.post_with_image = Post.objects.create(
-            text=self.text_1,
-            group=self.group,
-            author=self.user,
-            image=self.image_path,
-        )
 
         self.error_message = (
             "Загрузите правильное изображение. Файл, "
@@ -61,6 +49,11 @@ class PostAppTest(TestCase):
 
         # тестовый комментарий
         self.comment_text = "some comments..."
+
+        # тестовый пост
+        self.post_without_image = Post.objects.create(
+            text=self.text_1, group=self.group, author=self.user,
+        )
 
     def test_user_profile_page(self):
         """
@@ -132,10 +125,11 @@ class PostAppTest(TestCase):
         for url in urls:
             with self.subTest(url=url):
                 response = self.authorized_client.get(url)
-                self.assertContains(response, self.group)
-                self.assertContains(response, text)
                 if image:
                     self.assertContains(response, image)
+                else:
+                    self.assertContains(response, self.group)
+                    self.assertContains(response, text)
 
     def test_new_post_display_on_all_pages(self):
         """
@@ -149,8 +143,8 @@ class PostAppTest(TestCase):
             data={"text": self.text_1, "group": self.group.id},
             follow=True,
         )
-
-        self.post_contains_params_on_all_pages("1", text=self.text_1)
+        post = Post.objects.all().first()
+        self.post_contains_params_on_all_pages(post.id, text=self.text_1)
 
     def test_edited_post_display_on_all_pages(self):
         """
@@ -184,48 +178,45 @@ class PostAppTest(TestCase):
         response = self.authorized_client.get("/404/")
         self.assertEqual(response.status_code, 404)
 
-    def test_post_view_image_render(self):
-        """
-        Проверка отображения картинки на странице конкретного поста.
-        """
-
-        response = self.client.get(
-            reverse(
-                "post_view",
-                kwargs={
-                    "username": self.user.username,
-                    "post_id": self.post_with_image.id,
-                },
-            )
-        )
-        self.assertContains(response, self.tag)
-
     def test_post_view_image_display_on_all_pages(self):
         """
-        Проверка отображение поста с картинкой проверяют на главной
-        странице, на странице профайла и на странице группы.
+        Проверка загрузки и отображения изображеения на всех страницах с
+        постами.
         """
 
+        small_gif = (
+            b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04"
+            b"\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02"
+            b"\x02\x4c\x01\x00\x3b"
+        )
+        img = SimpleUploadedFile(
+            "small.gif", small_gif, content_type="image/gif"
+        )
+
+        post_with_image = Post.objects.create(
+            text=self.text_1, group=self.group, author=self.user, image=img,
+        )
+
+        cache.clear()
+
         self.post_contains_params_on_all_pages(
-            self.post_with_image.id, text=self.text_1, image=self.tag
+            post_with_image.id, image=self.tag
         )
 
     def test_non_image_file_upload_protection(self):
         """
         Проверка срабатывания защиты при загрузке неграфических файлов.
         """
-        with open(self.non_image_path, "rb") as non_img_file:
-            response = self.authorized_client.post(
-                reverse(
-                    "post_edit",
-                    kwargs={
-                        "username": self.post_without_image.author,
-                        "post_id": self.post_without_image.id,
-                    },
-                ),
-                {"image": non_img_file, "text": self.text_2},
-            )
-            self.assertFormError(response, "form", "image", self.error_message)
+
+        not_img = SimpleUploadedFile(
+            "small.txt", b"test", content_type="text/plain"
+        )
+
+        url = reverse("new_post")
+        response = self.authorized_client.post(
+            url, {"text": self.text_1, "image": not_img}
+        )
+        self.assertFormError(response, "form", "image", self.error_message)
 
     def test_index_page_cache(self):
         """
@@ -311,7 +302,7 @@ class PostAppTest(TestCase):
                 "add_comment",
                 kwargs={
                     "username": self.user.username,
-                    "post_id": self.post_without_image.pk,
+                    "post_id": self.post_without_image.id,
                 },
             ),
             {"text": self.comment_text},
@@ -324,7 +315,7 @@ class PostAppTest(TestCase):
                 "add_comment",
                 kwargs={
                     "username": self.user.username,
-                    "post_id": self.post_without_image.pk,
+                    "post_id": self.post_without_image.id,
                 },
             ),
             {"text": self.comment_text},

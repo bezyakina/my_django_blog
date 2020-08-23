@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from posts.models import Group, Post, User
+from posts.models import Group, Post, User, Follow
 
 
 class PostAppTest(TestCase):
@@ -242,41 +242,47 @@ class PostAppTest(TestCase):
         response = self.authorized_client.get(reverse("index"))
         self.assertContains(response, "not_cached")
 
-    def test_auth_user_follow_unfollow(self):
+    def test_auth_user_follow(self):
         """
-        Авторизованный пользователь может подписываться на других пользователей
-        и удалять их из подписок.
+        Авторизованный пользователь может подписываться на других
+        пользователей.
         """
 
+        self.assertEqual(Follow.objects.count(), 0)
         response = self.authorized_client.get(
-            reverse("profile", kwargs={"username": self.author_1.username})
+            reverse(
+                "profile_follow", kwargs={"username": self.author_1.username}
+            ),
+            follow=True,
         )
-        self.assertContains(response, "Подписчиков: 0")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Follow.objects.count(), 1)
+
+    def test_auth_user_unfollow(self):
+        """
+        Авторизованный пользователь может удалять других пользователей
+        из подписок.
+        """
 
         self.authorized_client.get(
             reverse(
                 "profile_follow", kwargs={"username": self.author_1.username}
             )
         )
-        response = self.authorized_client.get(
-            reverse("profile", kwargs={"username": self.author_1.username})
-        )
-        self.assertContains(response, "Подписчиков: 1")
+        self.assertEqual(Follow.objects.count(), 1)
 
-        self.authorized_client.get(
+        response = self.authorized_client.get(
             reverse(
                 "profile_unfollow", kwargs={"username": self.author_1.username}
-            )
+            ),
+            follow=True,
         )
-        response = self.authorized_client.get(
-            reverse("profile", kwargs={"username": self.author_1.username})
-        )
-        self.assertContains(response, "Подписчиков: 0")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Follow.objects.count(), 0)
 
-    def test_follower_index(self):
+    def test_post_in_follower_index(self):
         """
-        Новая запись пользователя появляется в ленте тех, кто на него подписан
-        и не появляется в ленте тех, кто не подписан на него.
+        Новая запись пользователя появляется в ленте тех, кто на него подписан.
         """
 
         response = self.authorized_client.get(reverse("follow_index"))
@@ -291,6 +297,16 @@ class PostAppTest(TestCase):
         )
         response = self.authorized_client.get(reverse("follow_index"))
         self.assertContains(response, self.text_1)
+
+    def test_post_not_in_follower_index(self):
+        """
+        Новая запись пользователя не появляется в ленте тех, кто не подписан
+        на него.
+        """
+        cache.clear()
+
+        response = self.authorized_client.get(reverse("follow_index"))
+        self.assertNotContains(response, self.text_1)
 
     def test_only_auth_user_add_comment(self):
         """

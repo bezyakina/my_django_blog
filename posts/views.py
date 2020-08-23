@@ -8,8 +8,8 @@ from .models import Follow, Group, Post, User
 
 def index(request):
     limit = 10
-    post_list = Post.objects.all()
-    paginator = Paginator(post_list, limit)
+    posts = Post.objects.all()
+    paginator = Paginator(posts, limit)
     page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
     return render(
@@ -47,11 +47,11 @@ def new_post(request):
 def profile(request, username):
     post_limit = 10
     author = get_object_or_404(User, username=username)
-    post_list = Post.objects.filter(author=author)
+    posts = author.author_posts.all()
     post_count = author.author_posts.count()
     follower_count = author.following.count()
     following_count = author.follower.count()
-    paginator = Paginator(post_list, post_limit)
+    paginator = Paginator(posts, post_limit)
     page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
     render_dict = {
@@ -156,14 +156,10 @@ def add_comment(request, username, post_id):
 
 @login_required
 def follow_index(request):
-    post_limit = 10
-    user = request.user
-    authors = user.follower.all().values("author")
-    post_list = Post.objects.filter(author__in=authors)
-    paginator = Paginator(post_list, post_limit)
+    posts = Post.objects.filter(author__following__user=request.user)
+    paginator = Paginator(posts, 10)
     page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
-
     return render(
         request, "follow.html", {"page": page, "paginator": paginator,},
     )

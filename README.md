@@ -1,1 +1,1 @@
-# hw05_final
+# my social network for bloggers created with django

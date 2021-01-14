@@ -18,7 +18,8 @@ def index(request):
 
 
 def group_posts(
-    request, slug,
+    request,
+    slug,
 ):
     limit = 10
     group = get_object_or_404(Group, slug=slug)
@@ -111,7 +112,11 @@ def post_edit(request, username, post_id):
             return redirect(
                 "post_view", username=request.user.username, post_id=post_id
             )
-    return render(request, "post_new.html", {"form": form, "post": post},)
+    return render(
+        request,
+        "post_new.html",
+        {"form": form, "post": post},
+    )
 
 
 def page_not_found(request, exception):
@@ -161,7 +166,12 @@ def follow_index(request):
     page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
     return render(
-        request, "follow.html", {"page": page, "paginator": paginator,},
+        request,
+        "follow.html",
+        {
+            "page": page,
+            "paginator": paginator,
+        },
     )
 
 

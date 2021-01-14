@@ -12,6 +12,11 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 
+import environ
+
+env = environ.Env()
+environ.Env.read_env()
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,18 +24,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "=_kl*5+_$bl8b!0w8-aqz^u=onh@h_+qr)ffs1sy%5ty&q96r0"
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = [
-    "*",
-    "localhost",
-    "127.0.0.1",
-    "[::1]",
-    "testserver",
-]
+PUBLIC_IP = os.getenv("PUBLIC_IP")
+
+ALLOWED_HOSTS = [PUBLIC_IP, "localhost", "bezyakina.tk", "www.bezyakina.tk"]
 
 # Application definition
 
@@ -92,6 +93,7 @@ WSGI_APPLICATION = "yatube.wsgi.application"
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 DATABASES = {
+    # 'default': env.db()
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
@@ -156,5 +158,7 @@ SITE_ID = 1
 
 # Connecting caching backend
 CACHES = {
-    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache",}
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
 }

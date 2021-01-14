@@ -5,7 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from posts.models import Group, Post, User, Follow
+from posts.models import Follow, Group, Post, User
 
 
 class PostAppTest(TestCase):
@@ -44,7 +44,9 @@ class PostAppTest(TestCase):
             username="author_1", password=12345
         )
         self.post_1_author_1 = Post.objects.create(
-            text=self.text_1, group=self.group, author=self.author_1,
+            text=self.text_1,
+            group=self.group,
+            author=self.author_1,
         )
 
         # тестовый комментарий
@@ -52,7 +54,9 @@ class PostAppTest(TestCase):
 
         # тестовый пост
         self.post_without_image = Post.objects.create(
-            text=self.text_1, group=self.group, author=self.user,
+            text=self.text_1,
+            group=self.group,
+            author=self.user,
         )
 
     def test_user_profile_page(self):
@@ -194,7 +198,10 @@ class PostAppTest(TestCase):
         )
 
         post_with_image = Post.objects.create(
-            text=self.text_1, group=self.group, author=self.user, image=img,
+            text=self.text_1,
+            group=self.group,
+            author=self.user,
+            image=img,
         )
 
         cache.clear()
@@ -226,13 +233,15 @@ class PostAppTest(TestCase):
         cache.clear()
 
         Post.objects.create(
-            text="cached", author=self.user,
+            text="cached",
+            author=self.user,
         )
         response = self.authorized_client.get(reverse("index"))
         self.assertContains(response, "cached")
 
         Post.objects.create(
-            text="not_cached", author=self.user,
+            text="not_cached",
+            author=self.user,
         )
         response = self.authorized_client.get(reverse("index"))
         self.assertNotContains(response, "not_cached")
